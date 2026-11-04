@@ -3,7 +3,7 @@ CFLAGS  = -Wall -g -I.
 FLEX    = flex
 BISON   = bison
 TARGET  = parser
-OBJS    = parser.tab.o lexer.o
+OBJS    = parser.tab.o lexer.o ast.o
 
 .PHONY: all run clean
 
