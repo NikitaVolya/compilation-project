@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include"ast.h"
+#include"sym_table.h"
 
 typedef struct yy_buffer_state *YY_BUFFER_STATE;
 
@@ -13,6 +14,9 @@ void yyerror(const char *s);
 extern FILE *yyin;
 
 int quit_flag = 0;
+
+static SymTable *root_table;
+static SymTable *cur_table; 
 
 %}
 
@@ -35,7 +39,7 @@ int quit_flag = 0;
 
 %token QUIT SYMBOLS DELETE
 
-%token PLUS MINUS DEVIDE MULT POW LIST
+%token PLUS MINUS DEVIDE MULT POW LIST SUM
 %token AND OR NOT
 %token ASSIGNE
 %token EQEQ NOTEQEQ GE LE GRATER LOWER
@@ -59,11 +63,16 @@ program
         freeAST(root);
     }
     | SYMBOLS NEWLINE                       {
-        printf("not created\n");
+        print_sym_table(root_table);
     }
     | DELETE ID NEWLINE                     {
         const char *id_name = $2;
-        printf("not created. delete %s\n", id_name);
+        if (remove_symbol(root_table, id_name)) {
+            printf("Error while removing \"%s\"\n", id_name);
+        } else {
+            printf("Removed %s\n", id_name);
+        }
+        
     }
     | QUIT NEWLINE                          { 
         quit_flag = 1;
@@ -77,9 +86,18 @@ instr
     ;
 
 assigne_t
-    : TYPECONST ID ASSIGNE expr             { $$ = makeAssign($2, $4, DEFAULT_ID); }
-    | CONST ID ASSIGNE expr                 { $$ = makeAssign($2, $4, CONST_ID); }
-    | ID ASSIGNE expr                       { $$ = makeAssign($1, $3, TYPECONST_ID); }
+    : TYPECONST ID ASSIGNE expr             {
+        $$ = makeAssign($2, $4);
+        insert_symbol(cur_table, $2, TYPECONST_SYM);
+    }
+    | CONST ID ASSIGNE expr                 { 
+        $$ = makeAssign($2, $4); 
+        insert_symbol(cur_table, $2, CONST_SYM);
+    }
+    | ID ASSIGNE expr                       { 
+        $$ = makeAssign($1, $3);
+        insert_symbol(cur_table, $1, DEFAULT_SYM);
+    }
     ;
 
 expr
@@ -88,17 +106,18 @@ expr
     | LPAREN basic_op arg_list RPAREN       { $$ = makeBasicOp($2, $3); }
     | LPAREN bin_op expr expr RPAREN        { $$ = makeBinOp($2, $3, $4); }
     | factor                                { $$ = $1; }
-    ;
+    ;   
 
 basic_op
     : PLUS                                  { $$ = "+"; }
     | MINUS                                 { $$ = "-"; }
-    | DEVIDE                                { $$ = "/"; }
     | MULT                                  { $$ = "*"; }
+    | SUM                                   { $$ = "sum"; }
     ;
 
 bin_op
     : POW                                   { $$ = "^"; }
+    | DEVIDE                                { $$ = "/"; }
     | EQEQ                                  { $$ = "=="; }
     | NOTEQEQ                               { $$ = "!="; }
     | GE                                    { $$ = ">="; }
@@ -134,6 +153,9 @@ int main() {
     char input[4096];
     int r = 0;
 
+    root_table = create_table(NULL);
+    cur_table = root_table;
+
     while (!quit_flag) {
         printf(">>> ");
         fflush(stdout);
@@ -153,6 +175,8 @@ int main() {
                 "Analyse interrompue (code %d).\n", r);
         }
     }
+
+    free_table(root_table);
 
     return r;
 }

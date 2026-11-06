@@ -1,18 +1,18 @@
 #ifndef AST_H
 #define AST_H
 
-typedef enum {
-    DEFAULT_ID, CONST_ID, TYPECONST_ID
-} IdFormat;
+#include "sym_table.h"
+
+
 
 typedef enum {
     NODE_NUM, NODE_ID, NODE_DECIMAL, NODE_BOOLEAN,
     NODE_SYSFUNC, NDOE_BASICOP, NODE_BINOP, 
-    NODE_ASSIGN
-} NodeType;
+    NODE_ASSIGN, NODE_LIST
+} NodeKind;
 
 typedef struct ASTNode {
-    NodeType type;
+    NodeKind kind;
     union {
         int   num;                                   /* Num(n)                      */
         char *id;                                    /* Id(x)                       */
@@ -33,8 +33,11 @@ typedef struct ASTNode {
         struct {                                     /* Assign(id,e)                */
             char           *id;
             struct ASTNode  *e;
-            IdFormat    format;          
+            SymFormat   format;          
         } assign;
+        struct {
+            struct ASTNode *elements;               /* LIST(e1, e2, ..)*/
+        } list;
     } data;
     struct ASTNode *next;                            /* linked list                 */
 } ASTNode;
@@ -46,9 +49,10 @@ ASTNode *makeBoolean(int b);
 ASTNode *makeSysFunc(const char *name, ASTNode *arg);
 ASTNode *makeBasicOp(const char *op, ASTNode *args);
 ASTNode *makeBinOp(const char *op, ASTNode *g, ASTNode *d);
-ASTNode *makeAssign(const char *id, ASTNode *e, IdFormat format);
+ASTNode *makeAssign(const char *id, ASTNode *e);
+ASTNode *makeList(ASTNode *elements);
 
 void afficheAST(ASTNode *root);
 void freeAST(ASTNode *root);
 
-#endif
+#endif /* AST_H */

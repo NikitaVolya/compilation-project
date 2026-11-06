@@ -1,0 +1,6 @@
+/.history
+*.o
+parser
+parser.tab.c
+parser.tab.h
+lexer.c

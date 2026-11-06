@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "ast.h"
 
 // dupliquer une chaine de caracteres
@@ -11,15 +12,14 @@ static char *dupstr(const char *s) {
     return r;
 }
 
-// Une fonction helper qui permet de créer n'importe quel type de noeud
-static ASTNode *newNode(NodeType t) {
+static ASTNode *newNode(NodeKind t) {
     ASTNode *n = (ASTNode *)calloc(1, sizeof(ASTNode));
     if (!n) { perror("calloc"); exit(1); }
-    n->type = t;
+    n->kind = t;
     n->next = NULL;
     return n;
 }
-// Creer un noeud AST de type Num
+
 ASTNode *makeNum(int n) { 
     ASTNode *r = newNode(NODE_NUM);    
     r->data.num = n;             
@@ -72,22 +72,31 @@ ASTNode *makeBinOp(const char *op, ASTNode *g, ASTNode *d) {
 }
 
 // Noeud AST Assign
-ASTNode *makeAssign(const char *id, ASTNode *e, IdFormat format) {
+ASTNode *makeAssign(const char *id, ASTNode *e) {
     ASTNode *r = newNode(NODE_ASSIGN);
     r->data.assign.id = dupstr(id);
     r->data.assign.e = e;
-    r->data.assign.format  = format;
     return r;
 }
 
+// Noeud AST List
+ASTNode *makeList(ASTNode *elements) {
+
+    ASTNode *r = newNode(NODE_LIST);
+
+    r->data.list.elements = elements;    
+
+    return r;
+}
 
 /* ---------------- Affichage ------------- */
 static void indent(int n) { while (n-- > 0) printf("  "); }
 
 static void printNode(ASTNode *n, int d) {
+
     while (n) {
         indent(d);
-        switch (n->type) {
+        switch (n->kind) {
         case NODE_NUM:     printf("Num(%d)\n", n->data.num);         break;
         case NODE_ID:      printf("Id(%s)\n", n->data.id);           break;
         case NODE_DECIMAL: printf("Decimal(%f)\n", n->data.decimal); break;
@@ -109,6 +118,10 @@ static void printNode(ASTNode *n, int d) {
             printf("Assign(%s)\n", n->data.assign.id);
             printNode(n->data.assign.e, d + 1);
             break;
+        case NODE_LIST:
+            printf("LIST\n");
+            printNode(n->data.list.elements, d + 1);
+            break;
         }
         n = n->next;
     }
@@ -120,7 +133,7 @@ void afficheAST(ASTNode *root) { printNode(root, 0); }
 void freeAST(ASTNode *n) {
     while (n) {
         ASTNode *nx = n->next;
-        switch (n->type) {
+        switch (n->kind) {
         case NODE_ID:     free(n->data.id); break;
         case NODE_SYSFUNC:
             free(n->data.sysfunc.name);
@@ -133,10 +146,15 @@ void freeAST(ASTNode *n) {
         case NODE_BINOP:
             free(n->data.binop.op);
             freeAST(n->data.binop.g);
-            freeAST(n->data.binop.d); break;
+            freeAST(n->data.binop.d); 
+            break;
         case NODE_ASSIGN:
             free(n->data.assign.id);
-            freeAST(n->data.assign.e); break;
+            freeAST(n->data.assign.e); 
+            break;
+        case NODE_LIST:
+            freeAST(n->data.list.elements);
+            break;
         default: break;
         }
         free(n);

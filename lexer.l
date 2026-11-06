@@ -23,8 +23,9 @@ ID      [a-zA-Z]({LETTER}|{DIGIT})*
 "typeconst"            { return TYPECONST; }
 "const"                { return CONST; }
 
-("exp"|"log"|"cos"|"sin"|"sqrt"|"sum"|"len") { yylval.str = strdup(yytext); return SYS_FUNC; }
+("exp"|"log"|"cos"|"sin"|"sqrt"|"len")       { yylval.str = strdup(yytext); return SYS_FUNC; }
 "list"                                       { yylval.str = strdup(yytext); return LIST; }
+"sum"                                        { return SUM; }
 
 "quit"                 { return QUIT; }
 "symbols"              { return SYMBOLS; }
