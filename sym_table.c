@@ -1,40 +1,14 @@
 #include "sym_table.h"
 
 static char *dupstr(const char *s) {
-    char *r = (char *)malloc(strlen(s) + 1);
-    if (!r) { perror("malloc"); exit(1); }
-    strcpy(r, s);
-    return r;
-}
-
-SymTable* create_table(SymTable *parent) {
-    SymTable *rep;
-    int i;
-
-    if ((rep = (SymTable*) malloc(sizeof(SymTable))) == NULL) {
+    char *r = (char *) malloc(strlen(s) + 1);
+    if (!r) { 
         perror("malloc"); 
-        exit(1);
+        exit(1); 
     }
-
-    for (i = 0; i < TABLE_SIZE; i++)
-        rep->buckets[i] = NULL;
-
-    rep->parent = parent;
-    rep->scope = 0;
-
-    return rep;
-}
-
-void free_table(SymTable* t) {
-    int i;
-
-    for (i = 0; i < TABLE_SIZE; i++) {
-        if (t->buckets[i] != NULL) {
-            free(t->buckets[i]);
-        }
-    }
-
-    free(t);
+    strcpy(r, s);
+    
+    return r;
 }
 
 SymEntry* create_sym_entry(const char *name, SymFormat format) {
@@ -67,6 +41,35 @@ void free_sym_entry(SymEntry* entry) {
     free(entry);
 }
 
+
+SymTable* create_table(SymTable *parent) {
+    SymTable *rep;
+    int i;
+
+    if ((rep = (SymTable*) malloc(sizeof(SymTable))) == NULL) {
+        perror("malloc"); 
+        exit(1);
+    }
+
+    for (i = 0; i < TABLE_SIZE; i++)
+        rep->buckets[i] = NULL;
+
+    rep->parent = parent;
+    rep->scope = 0;
+
+    return rep;
+}
+
+void free_table(SymTable* t) {
+    int i;
+
+    for (i = 0; i < t->scope; i++) {
+        free_sym_entry(t->buckets[i]);
+    }
+
+    free(t);
+}
+
 SymTable* enter_scope(SymTable* cur) {
     return create_table(cur);
 }
@@ -79,21 +82,43 @@ SymTable* exit_scope(SymTable* cur) {
     return rep;
 }
 
-SymEntry* insert_symbol(SymTable* t, const char* name, SymFormat format) {
-    
-    if (lookup_symbol(t, name) != NULL)
-        return ERROR_ID_ALREADY_EXIST;
+TABLE_INSERT_RESULT insert_symbol(SymTable* t, const char* name, SymFormat format) {
+    SymEntry *entry;
+    TABLE_INSERT_RESULT rep;
 
-    if (t->scope >= TABLE_SIZE)
-        return ERROR_TABLE_OVERFLOW;
+    entry = local_lookup_symbol(t, name);
 
-    t->buckets[t->scope] = create_sym_entry(name, format);
-    t->scope++;
+    if (entry == NULL) {
 
-    return NO_ERROR;
+        if (t->scope >= TABLE_SIZE) {
+            rep = ERROR_TABLE_OVERFLOW;
+        } else {
+            t->buckets[t->scope] = create_sym_entry(name, format);
+            t->scope++;
+            rep = NO_ERROR;
+        }
+        
+    } else if (entry->format == CONST_SYM) {
+        rep = ERROR_CONST_SYM_FORMAT;
+    } else {
+        rep = NO_ERROR;
+    }
+
+    return rep;
 }
 
 SymEntry* lookup_symbol(SymTable* t, const char* name) {
+    SymEntry *rep;
+
+    rep = local_lookup_symbol(t, name);
+
+    if (rep == NULL && t->parent != NULL)
+        rep = lookup_symbol(t->parent, name);
+
+    return rep;
+}
+
+SymEntry* local_lookup_symbol(SymTable* t, const char* name) {
     int i;
     SymEntry *entry, *rep;
 
@@ -106,9 +131,6 @@ SymEntry* lookup_symbol(SymTable* t, const char* name) {
             rep = entry;
         }
     }
-
-    if (rep != NULL)
-        rep = lookup_symbol(t->parent, name);
 
     return rep;
 }
@@ -133,6 +155,7 @@ int remove_symbol(SymTable *t, const char* name) {
                     t->buckets[i] = t->buckets[t->scope - 1];
                 }
                 
+                t->buckets[t->scope - 1] = NULL;
                 t->scope = t->scope - 1;
             }
         }

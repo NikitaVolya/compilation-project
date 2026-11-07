@@ -128,7 +128,13 @@ bin_op
 
 factor
     : LPAREN expr RPAREN                    { $$ = $2; }
-    | ID                                    { $$ = makeId(yylval.str); }
+    | ID                                    { 
+        $$ = makeId(yylval.str); 
+
+        if (lookup_symbol(cur_table, yylval.str) == NULL) {
+            printf("Error \"%s\" does not exist\n", yylval.str);
+        }
+    }
     | NUM                                   { $$ = makeNum(yylval.num);}
     | DECIMAL                               { $$ = makeDecimal(yylval.decimal); }
     | BOOLEAN                               { $$ = makeBoolean(yylval.boolean); }
