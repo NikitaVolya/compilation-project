@@ -11,7 +11,7 @@ static char *dupstr(const char *s) {
     return r;
 }
 
-SymEntry* create_sym_entry(const char *name, SymFormat format) {
+SymEntry* create_sym_entry(const char *name, SymFormat format, Type* type) {
     SymEntry *rep;
 
     if ((rep = (SymEntry*) malloc(sizeof(SymEntry))) == NULL) {
@@ -21,7 +21,9 @@ SymEntry* create_sym_entry(const char *name, SymFormat format) {
 
     rep->name = dupstr(name);
     rep->format = format;
+    rep->type = NULL;
     rep->next = NULL;
+    rep->type = type;
 
     return rep;
 }
@@ -82,24 +84,28 @@ SymTable* exit_scope(SymTable* cur) {
     return rep;
 }
 
-TABLE_INSERT_RESULT insert_symbol(SymTable* t, const char* name, SymFormat format) {
+TABLE_INSERT_RESULT insert_symbol(SymTable* t, const char* name, SymFormat format, Type *type) {
     SymEntry *entry;
     TABLE_INSERT_RESULT rep;
 
     entry = local_lookup_symbol(t, name);
-
-    if (entry == NULL) {
+    
+    if (type == NULL) {
+        rep = ERROR_NO_TYPE;
+    } else if (entry == NULL) {
 
         if (t->scope >= TABLE_SIZE) {
             rep = ERROR_TABLE_OVERFLOW;
         } else {
-            t->buckets[t->scope] = create_sym_entry(name, format);
+            t->buckets[t->scope] = create_sym_entry(name, format, type);
             t->scope++;
             rep = NO_ERROR;
         }
         
     } else if (entry->format == CONST_SYM) {
         rep = ERROR_CONST_SYM_FORMAT;
+    } else if (entry->format == TYPECONST_SYM && entry->type != type) {
+        rep = ERROR_TYPECONST_SYM_FORMAT;
     } else {
         rep = NO_ERROR;
     }
@@ -164,10 +170,22 @@ int remove_symbol(SymTable *t, const char* name) {
     return rep;
 }
 
+const char* sym_format_to_string(SymFormat format) {
+    switch (format) {
+        case DEFAULT_SYM:   return "";
+        case CONST_SYM:     return "CONST";
+        case TYPECONST_SYM: return "TYPECONST";
+        default:            return "<Error>";
+    }
+}
 
-static void print_separator(size_t name_width, size_t type_width) {
+static void print_separator(size_t name_width, size_t format_width, size_t type_width) {
     putchar('+');
     for (size_t i = 0; i < name_width + 2; i++)
+        putchar('-');
+
+    putchar('+');
+    for (size_t i = 0; i < format_width + 2; i++)
         putchar('-');
 
     putchar('+');
@@ -178,46 +196,56 @@ static void print_separator(size_t name_width, size_t type_width) {
 }
 
 void print_sym_table(SymTable *t) {
+    const char *name, *type, *format;
+    size_t name_width, format_width, type_width;
+
     if (t == NULL)
         return;
 
-    size_t name_width = strlen("Identifiant");
-    size_t type_width = strlen("Type");
+    name_width = strlen(ID_HEADER);
+    format_width = strlen(FORMAT_HEADER);
+    type_width = strlen(TYPE_HEADER);
 
     // find size of 
     for (int i = 0; i < t->scope; i++) {
         SymEntry *entry = t->buckets[i];
 
-        const char *name = entry->name;
-        const char *type = "no";
+        name = entry->name;
+        format = sym_format_to_string(entry->format);
+        type = type_to_string(entry->type);
 
         if (strlen(name) > name_width)
             name_width = strlen(name);
+
+        if (strlen(format) > format_width)
+            format_width = strlen(format);
 
         if (strlen(type) > type_width)
             type_width = strlen(type);
     }
 
     /* Header */
-    print_separator(name_width, type_width);
+    print_separator(name_width, format_width, type_width);
 
-    printf("| %-*s | %-*s |\n",
-           (int)name_width, "Identifiant",
-           (int)type_width, "Type");
+    printf("| %-*s | %-*s | %-*s |\n",
+           (int)name_width, ID_HEADER,
+           (int)format_width, FORMAT_HEADER,
+           (int)type_width, TYPE_HEADER);
 
-    print_separator(name_width, type_width);
+    print_separator(name_width, format_width, type_width);
 
+    /* DATA */
     for (int i = 0; i < t->scope; i++) {
         for (SymEntry *entry = t->buckets[i];
              entry != NULL;
              entry = entry->next) {
 
-            printf("| %-*s | %-*s |\n",
-                   (int)name_width, entry->name,
-                   (int)type_width,
-                   "not");
+            printf("| %-*s | %-*s | %-*s |\n",
+                   (int)name_width,   entry->name,
+                   (int)format_width, sym_format_to_string(entry->format),
+                   (int)type_width,   type_to_string(entry->type));
         }
     }
 
-    print_separator(name_width, type_width);
+    print_separator(name_width, format_width, type_width);
 }

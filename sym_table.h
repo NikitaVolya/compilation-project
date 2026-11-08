@@ -5,6 +5,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "types.h"
+
+#define ID_HEADER "Identifiant"
+#define FORMAT_HEADER "Format"
+#define TYPE_HEADER "Type"
 
 /** @brief Maximum number of symbols per table. */
 #define TABLE_SIZE 211
@@ -24,6 +29,7 @@ typedef enum {
 typedef struct SymEntry {
     char* name;            /**< Symbol identifier. */
     SymFormat format;      /**< Declaration modifier. */
+    Type *type;
     struct SymEntry* next; /**< Next entry in the chain. */
 } SymEntry;
 
@@ -43,7 +49,8 @@ typedef enum {
     NO_ERROR = 0,               /**< Operation successful. */
     ERROR_CONST_SYM_FORMAT,     /**< Existing symbol is constant. */
     ERROR_TYPECONST_SYM_FORMAT, /**< Existing symbol is a type constant. */
-    ERROR_TABLE_OVERFLOW        /**< Table capacity reached. */
+    ERROR_TABLE_OVERFLOW,       /**< Table capacity reached. */
+    ERROR_NO_TYPE               /**< Insert variable without type. */
 } TABLE_INSERT_RESULT;
 
 
@@ -79,9 +86,10 @@ SymTable* exit_scope(SymTable* cur);
  * @param t Target symbol table.
  * @param name Symbol identifier.
  * @param format Declaration modifier.
+ * @param type Type of variable.
  * @return Insertion status or declaration error.
  */
-TABLE_INSERT_RESULT insert_symbol(SymTable* t, const char* name, SymFormat format);
+TABLE_INSERT_RESULT insert_symbol(SymTable* t, const char* name, SymFormat format, Type *type);
 
 /**
  * @brief Searches for a symbol in the current and parent scopes.
@@ -102,6 +110,12 @@ SymEntry* local_lookup_symbol(SymTable* t, const char* name);
  * @return 0 if removed, 1 if not found.
  */
 int remove_symbol(SymTable *t, const char* name);
+
+/**
+ * @brief Transform SymFormat to String
+ * @return const string for format
+ */
+const char* sym_format_to_string(SymFormat format);
 
 /**
  * @brief Prints the current table as a formatted ASCII table.

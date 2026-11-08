@@ -23,7 +23,7 @@ ID      [a-zA-Z]({LETTER}|{DIGIT})*
 "typeconst"            { return TYPECONST; }
 "const"                { return CONST; }
 
-("exp"|"log"|"cos"|"sin"|"sqrt"|"len")       { yylval.str = strdup(yytext); return SYS_FUNC; }
+("exp"|"log"|"cos"|"sin"|"sqrt"|"len"|"not") { yylval.str = strdup(yytext); return SYS_FUNC; }
 "list"                                       { yylval.str = strdup(yytext); return LIST; }
 "sum"                                        { return SUM; }
 
@@ -40,7 +40,6 @@ ID      [a-zA-Z]({LETTER}|{DIGIT})*
 
 "and"                  { return AND; }
 "or"                   { return OR;  }
-"not"                  { return NOT; }
 
 "="                    { return ASSIGNE; }
 

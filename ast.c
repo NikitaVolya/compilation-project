@@ -35,6 +35,7 @@ static ASTNode *newNode(NodeKind t) {
     }
 
     n->kind = t;
+    n->type = NULL;
     n->next = NULL;
     
     return n;
@@ -94,10 +95,11 @@ ASTNode *makeBinOp(const char *op, ASTNode *g, ASTNode *d) {
 }
 
 /** @brief Creates an assignment node. */
-ASTNode *makeAssign(const char *id, ASTNode *e) {
+ASTNode *makeAssign(const char *id, ASTNode *e, SymFormat format) {
     ASTNode *r = newNode(NODE_ASSIGN);
     r->data.assign.id = dupstr(id);
     r->data.assign.e = e;
+    r->data.assign.format = format;
     return r;
 }
 
@@ -125,47 +127,54 @@ static void printNode(ASTNode *n, int d) {
     while (n) {
         indent(d);
 
+
         switch (n->kind) {
         case NODE_NUM:
-            printf("Num(%d)\n", n->data.num);
+            printf("Num<%s>(%d)\n", type_to_string(n->type), n->data.num);
             break;
 
         case NODE_ID:
-            printf("Id(%s)\n", n->data.id);
+            printf("Id<%s>(%s)\n", type_to_string(n->type), n->data.id);
             break;
 
         case NODE_DECIMAL:
-            printf("Decimal(%f)\n", n->data.decimal);
+            printf("Decimal<%s>(%f)\n", type_to_string(n->type), n->data.decimal);
             break;
 
         case NODE_BOOLEAN:
-            printf("Boolean(%s)\n",
+            printf("Boolean<%s>(%s)\n",
+                   type_to_string(n->type),
                    n->data.boolean ? "TRUE" : "FALSE");
             break;
 
         case NODE_SYSFUNC:
-            printf("SysFunc(%s)\n", n->data.sysfunc.name);
+            printf("SysFunc<%s>(%s)\n", type_to_string(n->type), n->data.sysfunc.name);
             printNode(n->data.sysfunc.arg, d + 1);
             break;
 
         case NODE_BASICOP:
-            printf("BasicOp(%s)\n", n->data.basicop.op);
+            printf("BasicOp<%s>(%s)\n", type_to_string(n->type), n->data.basicop.op);
             printNode(n->data.basicop.args, d + 1);
             break;
 
         case NODE_BINOP:
-            printf("BinOp(%s)\n", n->data.binop.op);
+            printf("BinOp<%s>(%s)\n", type_to_string(n->type), n->data.binop.op);
             printNode(n->data.binop.g, d + 1);
             printNode(n->data.binop.d, d + 1);
             break;
 
         case NODE_ASSIGN:
-            printf("Assign(%s)\n", n->data.assign.id);
+            switch (n->data.assign.format) {
+                case CONST_SYM: printf("const "); break;
+                case TYPECONST_SYM: printf("typeconst "); break;
+                default: break;
+            }
+            printf("Assign<%s>(%s)\n", type_to_string(n->type), n->data.assign.id);
             printNode(n->data.assign.e, d + 1);
             break;
 
         case NODE_LIST:
-            printf("LIST\n");
+            printf("%s\n", type_to_string(n->type));
             printNode(n->data.list.elements, d + 1);
             break;
         }

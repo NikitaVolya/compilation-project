@@ -3,7 +3,7 @@ CFLAGS  = -Wall -g -I.
 FLEX    = flex
 BISON   = bison
 TARGET  = parser
-OBJS    = parser.tab.o lexer.o ast.o sym_table.o
+OBJS    = parser.tab.o lexer.o ast.o sym_table.o types.o typecheck.o
 
 .PHONY: all run clean
 
@@ -20,6 +20,16 @@ lexer.c: lexer.l parser.tab.h
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
+
+
+parser.o: ast.h sym_table.h typecheck.h
+
+typecheck.o: ast.h
+
+ast.o: sym_table.h
+
+sym_table.o: types.h
+
 
 run: $(TARGET)
 	./$(TARGET) test.c

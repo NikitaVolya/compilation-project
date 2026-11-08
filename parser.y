@@ -1,8 +1,10 @@
 %{
 #include <stdio.h>
 #include <stdlib.h>
-#include"ast.h"
-#include"sym_table.h"
+
+#include "ast.h"
+#include "sym_table.h"
+#include "typecheck.h"
 
 typedef struct yy_buffer_state *YY_BUFFER_STATE;
 
@@ -59,6 +61,7 @@ static SymTable *cur_table;
 program
     : instr NEWLINE                         { 
         ASTNode *root = $1;
+        typecheck(root, root_table);
         afficheAST(root);
         freeAST(root);
     }
@@ -87,24 +90,21 @@ instr
 
 assigne_t
     : TYPECONST ID ASSIGNE expr             {
-        $$ = makeAssign($2, $4);
-        insert_symbol(cur_table, $2, TYPECONST_SYM);
+        $$ = makeAssign($2, $4, TYPECONST_SYM);
     }
     | CONST ID ASSIGNE expr                 { 
-        $$ = makeAssign($2, $4); 
-        insert_symbol(cur_table, $2, CONST_SYM);
+        $$ = makeAssign($2, $4, CONST_SYM);
     }
     | ID ASSIGNE expr                       { 
-        $$ = makeAssign($1, $3);
-        insert_symbol(cur_table, $1, DEFAULT_SYM);
+        $$ = makeAssign($1, $3, DEFAULT_SYM);
     }
     ;
 
 expr
-    : LPAREN SYS_FUNC arg_list RPAREN       { $$ = makeSysFunc($2, $3); }
-    | LPAREN LIST arg_list RPAREN           { $$ = makeBasicOp("list", $3); }
-    | LPAREN basic_op arg_list RPAREN       { $$ = makeBasicOp($2, $3); }
-    | LPAREN bin_op expr expr RPAREN        { $$ = makeBinOp($2, $3, $4); }
+    : SYS_FUNC expr                         { $$ = makeSysFunc($1, $2); }
+    | LIST arg_list                         { $$ = makeList($2); }
+    | basic_op arg_list                     { $$ = makeBasicOp($1, $2); }
+    | bin_op expr expr                      { $$ = makeBinOp($1, $2, $3); }
     | factor                                { $$ = $1; }
     ;   
 
@@ -113,6 +113,8 @@ basic_op
     | MINUS                                 { $$ = "-"; }
     | MULT                                  { $$ = "*"; }
     | SUM                                   { $$ = "sum"; }
+    | AND                                   { $$ = "and"; }
+    | OR                                    { $$ = "or"; }
     ;
 
 bin_op

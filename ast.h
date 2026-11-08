@@ -24,6 +24,7 @@ typedef enum {
  */
 typedef struct ASTNode {
     NodeKind kind;                    /**< Type of the node. */
+    Type *type;
 
     union {
         int num;                      /**< Integer literal. */
@@ -89,7 +90,7 @@ ASTNode *makeBasicOp(const char *op, ASTNode *args);
 ASTNode *makeBinOp(const char *op, ASTNode *g, ASTNode *d);
 
 /** @brief Creates an assignment node. */
-ASTNode *makeAssign(const char *id, ASTNode *e);
+ASTNode *makeAssign(const char *id, ASTNode *e, SymFormat format);
 
 /** @brief Creates a list node. */
 ASTNode *makeList(ASTNode *elements);
