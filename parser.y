@@ -5,6 +5,7 @@
 #include "ast.h"
 #include "sym_table.h"
 #include "typecheck.h"
+#include "errors.h"
 
 typedef struct yy_buffer_state *YY_BUFFER_STATE;
 
@@ -19,6 +20,9 @@ int quit_flag = 0;
 
 static SymTable *root_table;
 static SymTable *cur_table; 
+
+extern int yylineno;
+extern int token_column;
 
 %}
 
@@ -35,7 +39,7 @@ static SymTable *cur_table;
 %token <str> ID
 %token <decimal> DECIMAL
 
-%token BOOLEAN
+%token <boolean> BOOLEAN
 %token TYPECONST CONST
 %token <str> SYS_FUNC
 
@@ -46,7 +50,7 @@ static SymTable *cur_table;
 %token ASSIGNE
 %token EQEQ NOTEQEQ GE LE GRATER LOWER
 %token LPAREN RPAREN
-%token NEWLINE
+%token NEWLINE LEX_ERROR
 
 
 %type <ast> program instr assigne_t
@@ -81,6 +85,9 @@ program
         quit_flag = 1;
         printf("good night world!\n");
     }
+    | error NEWLINE {
+        yyerrok;
+    }
     ;
 
 instr 
@@ -97,6 +104,16 @@ assigne_t
     }
     | ID ASSIGNE expr                       { 
         $$ = makeAssign($1, $3, DEFAULT_SYM);
+    }
+    | ID ID ASSIGNE expr {
+        token_column = 1;
+        report_error(ERROR_SYNTAX, yylineno, token_column,
+                     "Mot-clé inconnu '%s'. Vouliez-vous écrire 'const' ?",
+                     $1);
+        free($1);
+        free($2);
+        freeAST($4);
+        YYERROR;
     }
     ;
 
@@ -130,16 +147,10 @@ bin_op
 
 factor
     : LPAREN expr RPAREN                    { $$ = $2; }
-    | ID                                    { 
-        $$ = makeId(yylval.str); 
-
-        if (lookup_symbol(cur_table, yylval.str) == NULL) {
-            printf("Error \"%s\" does not exist\n", yylval.str);
-        }
-    }
-    | NUM                                   { $$ = makeNum(yylval.num);}
-    | DECIMAL                               { $$ = makeDecimal(yylval.decimal); }
-    | BOOLEAN                               { $$ = makeBoolean(yylval.boolean); }
+    | ID                                    { $$ = makeId($1); }
+    | NUM                                   { $$ = makeNum($1);}
+    | DECIMAL                               { $$ = makeDecimal($1); }
+    | BOOLEAN                               { $$ = makeBoolean($1); }
     ;
 
 arg_list
@@ -153,9 +164,27 @@ arg_list
 
 %%
 
+
 void yyerror(const char *s) {
-    fprintf(stderr, "Erreur syntaxique : %s\n", s);
+    if (lexical_error_occurred) {
+        return;
+    }
+
+    if (strstr(s, "expecting RPAREN") != NULL) {
+        report_error(ERROR_SYNTAX, yylineno, token_column,
+                     "Parenthèse fermante attendue ')'");
+    } else if (strstr(s, "expecting ASSIGNE") != NULL) {
+        report_error(ERROR_SYNTAX, yylineno, token_column,
+                     "Opérateur d'affectation attendu '='");
+    } else if (strstr(s, "expecting ID") != NULL) {
+        report_error(ERROR_SYNTAX, yylineno, token_column,
+                     "Identifiant attendu");
+    } else {
+        report_error(ERROR_SYNTAX, yylineno, token_column,
+                     "%s", s);
+    }
 }
+
 
 int main() {
     char input[4096];
@@ -172,10 +201,10 @@ int main() {
             break;
         }
 
+        lexical_error_occurred = 0;
+
         YY_BUFFER_STATE buffer = yy_scan_string(input);
-
         r = yyparse();
-
         yy_delete_buffer(buffer);
 
         if (r != 0) {

@@ -2,11 +2,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include "parser.tab.h"
+#include "errors.h"
+
+
+/** @brief Current column in the input line. */
+int current_column = 1;
+
+/** @brief Starting column of the matched token. */
+int token_column = 1;
+
+
+
+#define YY_USER_ACTION \
+    do { \
+        token_column = current_column; \
+        current_column += yyleng; \
+    } while (0);
 
 %}
 
-%option noyywrap
+%option noyywrap yylineno
 
 DIGIT   [0-9]
 LETTER  [a-zA-Z_]
@@ -54,12 +71,22 @@ ID      [a-zA-Z]({LETTER}|{DIGIT})*
 "("                    { return LPAREN; }
 ")"                    { return RPAREN; }
 
-\n                     { return NEWLINE; }
+\n                     {
+                            current_column = 1;
+                            return NEWLINE;
+                       }
 
 {ID}                   { yylval.str = strdup(yytext);   return ID; }
 {DIGIT}+               { yylval.num = atoi(yytext);     return NUM; }
 {DIGIT}+\.{DIGIT}+     { yylval.decimal = atof(yytext); return DECIMAL; }
 
-.                      { fprintf(stderr, "Erreur lexicale : caractere inattendu '%s'\n", yytext); }
+                       . {
+                        lexical_error_occurred = 1;
+
+                        report_error(ERROR_LEXICAL, yylineno, token_column,
+                                    "Caractère inattendu '%s'", yytext);
+
+                        return LEX_ERROR;
+                       }
 
 %%
