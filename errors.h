@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-
 extern int lexical_error_occurred;
 
 /**

@@ -66,7 +66,9 @@ program
     : instr NEWLINE                         { 
         ASTNode *root = $1;
         typecheck(root, root_table);
-        afficheAST(root);
+        if (!type_equal(root->type, type_error)) {
+            afficheAST(root);
+        }
         freeAST(root);
     }
     | SYMBOLS NEWLINE                       {
@@ -98,17 +100,23 @@ instr
 assigne_t
     : TYPECONST ID ASSIGNE expr             {
         $$ = makeAssign($2, $4, TYPECONST_SYM);
+        $$->row = yylineno;
+        $$->col = token_column;
     }
     | CONST ID ASSIGNE expr                 { 
         $$ = makeAssign($2, $4, CONST_SYM);
+        $$->row = yylineno;
+        $$->col = token_column;
     }
     | ID ASSIGNE expr                       { 
         $$ = makeAssign($1, $3, DEFAULT_SYM);
+        $$->row = yylineno;
+        $$->col = token_column;
     }
     | ID ID ASSIGNE expr {
         token_column = 1;
         report_error(ERROR_SYNTAX, yylineno, token_column,
-                     "Mot-clé inconnu '%s'. Vouliez-vous écrire 'const' ?",
+                     "Mot-clé inconnu '%s'. Vouliez-vous écrire 'const' ou 'typeconst' ?",
                      $1);
         free($1);
         free($2);
@@ -118,10 +126,26 @@ assigne_t
     ;
 
 expr
-    : SYS_FUNC expr                         { $$ = makeSysFunc($1, $2); }
-    | LIST arg_list                         { $$ = makeList($2); }
-    | basic_op arg_list                     { $$ = makeBasicOp($1, $2); }
-    | bin_op expr expr                      { $$ = makeBinOp($1, $2, $3); }
+    : SYS_FUNC expr                         { 
+                                              $$ = makeSysFunc($1, $2);
+                                              $$->row = yylineno;
+                                              $$->col = token_column;
+                                            }
+    | LIST arg_list                         { 
+                                              $$ = makeList($2); 
+                                              $$->row = yylineno;
+                                              $$->col = token_column;
+                                            }
+    | basic_op arg_list                     { 
+                                              $$ = makeBasicOp($1, $2); 
+                                              $$->row = yylineno;
+                                              $$->col = token_column;
+                                            }
+    | bin_op expr expr                      { 
+                                              $$ = makeBinOp($1, $2, $3);
+                                              $$->row = yylineno;
+                                              $$->col = token_column;
+                                            }
     | factor                                { $$ = $1; }
     ;   
 
@@ -147,18 +171,27 @@ bin_op
 
 factor
     : LPAREN expr RPAREN                    { $$ = $2; }
-    | ID                                    { $$ = makeId($1); }
+    | ID                                    { 
+                                              $$ = makeId($1);
+                                              $$->row = yylineno;
+                                              $$->col = token_column;
+                                            }
     | NUM                                   { $$ = makeNum($1);}
     | DECIMAL                               { $$ = makeDecimal($1); }
     | BOOLEAN                               { $$ = makeBoolean($1); }
     ;
 
 arg_list
-    : expr                                  { $$ = $1; }
+    : expr                                  { 
+        $$ = $1; 
+        $$->row = yylineno;
+        $$->col = token_column;
+    }
     | expr arg_list                         { 
-        ASTNode *r = $1;
-        r->next = $2;
-        $$ = r;
+        $$ = $1;
+        $$->next = $2;
+        $$->row = yylineno;
+        $$->col = token_column;
     }
     ;
 

@@ -37,6 +37,8 @@ static ASTNode *newNode(NodeKind t) {
     n->kind = t;
     n->type = NULL;
     n->next = NULL;
+    n->row = 0;
+    n->col = 0;
     
     return n;
 }

@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "ast.h"
+#include "errors.h"
 
 /**
  * @brief Performs semantic type checking on an AST node.

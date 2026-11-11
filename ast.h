@@ -25,6 +25,7 @@ typedef enum {
 typedef struct ASTNode {
     NodeKind kind;                    /**< Type of the node. */
     Type *type;
+    int row, col;
 
     union {
         int num;                      /**< Integer literal. */

@@ -12,7 +12,7 @@ all: $(TARGET)
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^
 
-parser.tab.c parser.tab.h: parser.y
+parser.tab.c parser.tab.h: parser.y errors.h
 	$(BISON) -d -o parser.tab.c parser.y
 
 lexer.c: lexer.l parser.tab.h errors.h
@@ -24,7 +24,7 @@ lexer.c: lexer.l parser.tab.h errors.h
 
 parser.o: ast.h sym_table.h typecheck.h errors.h
 
-typecheck.o: ast.h
+typecheck.o: ast.h errors.h
 
 ast.o: sym_table.h
 

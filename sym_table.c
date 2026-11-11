@@ -104,9 +104,13 @@ TABLE_INSERT_RESULT insert_symbol(SymTable* t, const char* name, SymFormat forma
         
     } else if (entry->format == CONST_SYM) {
         rep = ERROR_CONST_SYM_FORMAT;
-    } else if (entry->format == TYPECONST_SYM && entry->type != type) {
+    } else if (entry->format == TYPECONST_SYM && !type_equal(entry->type, type)) {
         rep = ERROR_TYPECONST_SYM_FORMAT;
     } else {
+
+        entry->format = format;
+        entry->type = type;
+
         rep = NO_ERROR;
     }
 
